@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}部门管理 - HRMS{% endblock %}
+{% block content %}
+<div class="page-title">
+    <i class="fas fa-sitemap me-2" style="color:#667eea;"></i>部门与岗位架构管理
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px;">企业组织架构的维护与管理</small>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0"><i class="fas fa-list me-2" style="color:#667eea;"></i>部门列表</h6>
+                <button class="btn btn-sm btn-success" onclick="showAddDept()"><i class="fas fa-plus"></i> 添加部门</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>部门编号</th>
+                                <th>部门名称</th>
+                                <th>上级部门</th>
+                                <th>所属公司</th>
+                                <th>员工数</th>
+                                <th>状态</th>
+                                <th style="width:120px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deptTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0"><i class="fas fa-sitemap me-2" style="color:#38ef7d;"></i>组织架构图</h6>
+            </div>
+            <div class="card-body" id="orgChart" style="min-height:300px;">
+                <div id="orgTree"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑部门模态框 -->
+<div class="modal fade" id="deptModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deptModalTitle"><i class="fas fa-building"></i> 添加部门</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="deptForm">
+                    <input type="hidden" id="dept_edit_mode" value="0">
+                    <div class="mb-3">
+                        <label class="form-label">部门编号 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="dept_id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">部门名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="dept_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">上级部门</label>
+                        <select class="form-select" id="dept_parent"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">排序号</label>
+                        <input type="number" class="form-control" id="dept_order" value="0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveDept()"><i class="fas fa-save"></i> 保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let deptsData = [];
+
+function loadDepartments() {
+    $.get('/api/departments', function(data) {
+        deptsData = data;
+        const tbody = $('#deptTableBody');
+        tbody.empty();
+        data.forEach(d => {
+            const parent = data.find(p => p.dept_id === d.parent_dept_id);
+            tbody.append(`<tr>
+                <td><span class="badge bg-light text-dark">${d.dept_id}</span></td>
+                <td><strong>${d.dept_name}</strong></td>
+                <td>${parent ? parent.dept_name : '-'}</td>
+                <td>${d.company_name || '-'}</td>
+                <td><span class="badge bg-info">${d.emp_count}</span></td>
+                <td><span class="badge bg-${d.stop_flag==='N'?'success':'secondary'}">${d.stop_flag==='N'?'启用':'停用'}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editDept('${d.dept_id}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteDept('${d.dept_id}','${d.dept_name}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`);
+        });
+        renderOrgTree(data);
+    });
+}
+
+function renderOrgTree(data) {
+    const root = data.find(d => !d.parent_dept_id || d.parent_dept_id === '');
+    let html = '';
+    function buildTree(parentId, level) {
+        const children = data.filter(d => d.parent_dept_id === parentId && d.stop_flag === 'N');
+        children.forEach(c => {
+            const padding = level * 20;
+            const hasChildren = data.some(d => d.parent_dept_id === c.dept_id && d.stop_flag === 'N');
+            const icon = hasChildren ? 'fa-folder-open' : 'fa-building';
+            const color = hasChildren ? '#667eea' : '#38ef7d';
+            html += `<div style="padding-left:${padding}px;padding-top:6px;padding-bottom:6px;border-left:${level>0?'2px solid #e9ecef':''};margin-left:${level>0?'10px':'0'};">
+                <i class="fas ${icon}" style="color:${color};width:20px;"></i>
+                <strong>${c.dept_name}</strong>
+                <small class="text-muted ms-2">(${c.emp_count}人)</small>
+            </div>`;
+            buildTree(c.dept_id, level + 1);
+        });
+    }
+    buildTree(root ? root.dept_id : '', 0);
+    $('#orgTree').html(html || '<div class="empty-state"><i class="fas fa-sitemap"></i><p>暂无部门数据</p></div>');
+}
+
+function showAddDept() {
+    $('#deptModalTitle').html('<i class="fas fa-plus"></i> 添加部门');
+    $('#deptForm')[0].reset();
+    $('#dept_edit_mode').val('0');
+    $('#dept_id').prop('disabled', false);
+    loadDeptParentSelect();
+    new bootstrap.Modal(document.getElementById('deptModal')).show();
+}
+
+function loadDeptParentSelect() {
+    const sel = $('#dept_parent');
+    sel.empty();
+    sel.append('<option value="">-- 无上级部门 --</option>');
+    deptsData.forEach(d => {
+        if (d.stop_flag === 'N') sel.append(`<option value="${d.dept_id}">${d.dept_name}</option>`);
+    });
+}
+
+function editDept(deptId) {
+    const d = deptsData.find(x => x.dept_id === deptId);
+    if (!d) return;
+    $('#deptModalTitle').html('<i class="fas fa-edit"></i> 编辑部门');
+    $('#dept_edit_mode').val('1');
+    $('#dept_id').val(d.dept_id).prop('disabled', true);
+    $('#dept_name').val(d.dept_name);
+    $('#dept_order').val(d.order_id || 0);
+    loadDeptParentSelect();
+    $('#dept_parent').val(d.parent_dept_id || '');
+    new bootstrap.Modal(document.getElementById('deptModal')).show();
+}
+
+function saveDept() {
+    const isEdit = $('#dept_edit_mode').val() === '1';
+    const deptId = $('#dept_id').val();
+    const data = {
+        dept_id: deptId,
+        dept_name: $('#dept_name').val(),
+        parent_dept_id: $('#dept_parent').val(),
+        order_id: parseInt($('#dept_order').val()) || 0
+    };
+    if (!data.dept_id || !data.dept_name) {
+        showToast('部门编号和名称为必填项', 'warning');
+        return;
+    }
+    const url = isEdit ? `/api/departments/${deptId}` : '/api/departments';
+    const method = isEdit ? 'PUT' : 'POST';
+    $.ajax({url, method, contentType:'application/json', data: JSON.stringify(data),
+        success: function(res) {
+            if (res.success) {
+                showToast(res.message);
+                bootstrap.Modal.getInstance(document.getElementById('deptModal')).hide();
+                loadDepartments();
+            } else {
+                showToast(res.message, 'danger');
+            }
+        }
+    });
+}
+
+function deleteDept(deptId, name) {
+    if (!confirm(`确认停用部门 "${name}"？`)) return;
+    $.ajax({url: `/api/departments/${deptId}`, method: 'DELETE',
+        success: function(res) {
+            if (res.success) showToast(res.message);
+            else showToast(res.message, 'danger');
+            loadDepartments();
+        }
+    });
+}
+
+$(document).ready(loadDepartments);
+</script>
+{% endblock %}
