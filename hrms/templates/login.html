@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS - 人力资源管理系统</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a2035 0%, #2d3748 50%, #1a2035 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+        .login-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px 35px;
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-logo .icon {
+            width: 70px; height: 70px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+        .login-logo h2 {
+            font-weight: 700;
+            color: #1a2035;
+            margin-bottom: 5px;
+        }
+        .login-logo p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .login-card .form-control {
+            border-radius: 10px;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .login-card .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+        .login-card .input-group-text {
+            border-radius: 10px 0 0 10px;
+            border: 2px solid #e9ecef;
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+        .login-card .btn-login {
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: #fff;
+            transition: all 0.3s;
+        }
+        .login-card .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: rgba(255,255,255,0.6);
+            font-size: 13px;
+        }
+        .login-alert {
+            border-radius: 10px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="icon"><i class="fas fa-users-cog"></i></div>
+                <h2>HRMS</h2>
+                <p>企业人力资源管理系统</p>
+            </div>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} login-alert">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:13px;">用户名</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control" name="username" placeholder="请输入用户名" required autofocus>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold" style="font-size:13px;">密码</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="form-control" name="password" placeholder="请输入密码" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-login w-100">
+                    <i class="fas fa-sign-in-alt me-2"></i>登 录
+                </button>
+            </form>
+            <hr class="my-4">
+            <div class="text-center" style="font-size:12px;color:#adb5bd;">
+                <strong>测试账户：</strong><br>
+                管理员：admin / admin123<br>
+                人事专员：hruser / hr123
+            </div>
+        </div>
+        <div class="login-footer">
+            &copy; 2026 HRMS v1.0 &middot; 企业人力资源管理系统
+        </div>
+    </div>
+</body>
+</html>
