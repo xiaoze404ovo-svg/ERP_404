@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 - HRMS{% endblock %}
+{% block content %}
+<div class="page-title">
+    <i class="fas fa-tachometer-alt me-2" style="color:#667eea;"></i>仪表盘
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px;">企业人力资源数据总览</small>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-6 mb-3">
+        <div class="stat-card bg-gradient-blue">
+            <div class="number" id="statEmployees">--</div>
+            <div class="label"><i class="fas fa-user-friends me-1"></i>在职员工</div>
+            <div class="icon"><i class="fas fa-users"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6 mb-3">
+        <div class="stat-card bg-gradient-green">
+            <div class="number" id="statDepartments">--</div>
+            <div class="label"><i class="fas fa-sitemap me-1"></i>部门数量</div>
+            <div class="icon"><i class="fas fa-building"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6 mb-3">
+        <div class="stat-card bg-gradient-orange">
+            <div class="number" id="statActiveEmps">--</div>
+            <div class="label"><i class="fas fa-user-check me-1"></i>活跃员工</div>
+            <div class="icon"><i class="fas fa-user-clock"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6 mb-3">
+        <div class="stat-card bg-gradient-teal">
+            <div class="number" id="statChanges">--</div>
+            <div class="label"><i class="fas fa-exchange-alt me-1"></i>本月变动</div>
+            <div class="icon"><i class="fas fa-chart-line"></i></div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表行 -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0"><i class="fas fa-chart-bar me-2" style="color:#667eea;"></i>各部门人员分布</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="deptChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0"><i class="fas fa-yen-sign me-2" style="color:#38ef7d;"></i>薪酬概览</h6>
+            </div>
+            <div class="card-body">
+                <div style="text-align:center;padding:10px 0;">
+                    <div style="font-size:12px;color:#6c757d;">平均薪资</div>
+                    <div style="font-size:28px;font-weight:700;color:#1a2035;" id="salaryAvg">--</div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div style="font-size:12px;color:#6c757d;">最高</div>
+                        <div style="font-size:16px;font-weight:600;color:#28a745;" id="salaryMax">--</div>
+                    </div>
+                    <div class="col-4">
+                        <div style="font-size:12px;color:#6c757d;">最低</div>
+                        <div style="font-size:16px;font-weight:600;color:#dc3545;" id="salaryMin">--</div>
+                    </div>
+                    <div class="col-4">
+                        <div style="font-size:12px;color:#6c757d;">总额</div>
+                        <div style="font-size:16px;font-weight:600;color:#667eea;" id="salaryTotal">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 考勤趋势和快捷入口 -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0"><i class="fas fa-chart-line me-2" style="color:#f5576c;"></i>考勤趋势</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="attendanceChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0"><i class="fas fa-link me-2" style="color:#17a2b8;"></i>快捷操作</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('employees') }}" class="btn btn-outline-primary text-start">
+                        <i class="fas fa-user-plus me-2"></i>员工管理
+                    </a>
+                    <a href="{{ url_for('attendance_page') }}" class="btn btn-outline-success text-start">
+                        <i class="fas fa-clock me-2"></i>考勤管理
+                    </a>
+                    <a href="{{ url_for('salary_page') }}" class="btn btn-outline-warning text-start">
+                        <i class="fas fa-yen-sign me-2"></i>薪酬管理
+                    </a>
+                    <a href="{{ url_for('changes_page') }}" class="btn btn-outline-info text-start">
+                        <i class="fas fa-exchange-alt me-2"></i>人事变动
+                    </a>
+                    {% if role == 'admin' %}
+                    <a href="{{ url_for('users_page') }}" class="btn btn-outline-secondary text-start">
+                        <i class="fas fa-user-shield me-2"></i>用户管理
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let deptChart = null, attendanceChart = null;
+
+function loadDashboard() {
+    // 统计卡片
+    $.get('/api/dashboard/stats', function(stats) {
+        $('#statEmployees').text(stats.total_employees);
+        $('#statDepartments').text(stats.total_departments);
+        $('#statActiveEmps').text(stats.active_employees);
+        $('#statChanges').text(stats.monthly_changes);
+    });
+    
+    // 部门分布
+    $.get('/api/dashboard/dept_distribution', function(data) {
+        const colors = ['#667eea','#38ef7d','#f5576c','#4facfe','#f093fb','#11998e','#ffc107','#17a2b8'];
+        if (deptChart) deptChart.destroy();
+        deptChart = new Chart(document.getElementById('deptChart'), {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: '员工人数',
+                    data: data.values,
+                    backgroundColor: data.values.map((_,i) => colors[i % colors.length] + '80'),
+                    borderColor: data.values.map((_,i) => colors[i % colors.length]),
+                    borderWidth: 2,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    });
+    
+    // 薪酬概览
+    $.get('/api/dashboard/salary_stats', function(data) {
+        $('#salaryAvg').text('¥' + data.avg_salary.toLocaleString());
+        $('#salaryMax').text('¥' + data.max_salary.toLocaleString());
+        $('#salaryMin').text('¥' + data.min_salary.toLocaleString());
+        $('#salaryTotal').text('¥' + data.total_payroll.toLocaleString());
+    });
+    
+    // 考勤趋势
+    $.get('/api/dashboard/attendance_trend', function(data) {
+        if (attendanceChart) attendanceChart.destroy();
+        const labels = data.map(d => d.year_month).reverse();
+        const datasets = [
+            { label: '迟到', data: data.map(d => d.late).reverse(), borderColor: '#ffc107', backgroundColor: '#ffc10720', fill: true },
+            { label: '旷工', data: data.map(d => d.absent).reverse(), borderColor: '#dc3545', backgroundColor: '#dc354520', fill: true },
+            { label: '请假', data: data.map(d => parseFloat(d.leaves)).reverse(), borderColor: '#17a2b8', backgroundColor: '#17a2b820', fill: true },
+            { label: '加班', data: data.map(d => parseFloat(d.overtime)).reverse(), borderColor: '#28a745', backgroundColor: '#28a74520', fill: true }
+        ];
+        attendanceChart = new Chart(document.getElementById('attendanceChart'), {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    });
+}
+
+$(document).ready(loadDashboard);
+</script>
+{% endblock %}
