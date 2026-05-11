@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+{% block title %}员工管理 - HRMS{% endblock %}
+{% block content %}
+<div class="page-title">
+    <i class="fas fa-user-friends me-2" style="color:#667eea;"></i>员工信息档案管理
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px;">员工档案的增删改查与维护</small>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="input-group input-group-sm search-box">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="searchEmp" placeholder="搜索姓名/编号/手机...">
+            </div>
+            <select class="form-select form-select-sm" id="filterDept" style="width:130px;">
+                <option value="">全部部门</option>
+            </select>
+            <select class="form-select form-select-sm" id="filterStatus" style="width:120px;">
+                <option value="">在职员工</option>
+                <option value="active">在职</option>
+                <option value="resigned">已离职</option>
+                <option value="leave">休假中</option>
+                <option value="retired">已退休</option>
+            </select>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadEmployees()"><i class="fas fa-search"></i> 搜索</button>
+        </div>
+        <div class="mt-2 mt-md-0">
+            <button class="btn btn-sm btn-success" onclick="showAddEmployee()"><i class="fas fa-plus"></i> 添加员工</button>
+            <a href="{{ url_for('export_employees') }}" class="btn btn-sm btn-outline-info"><i class="fas fa-download"></i> 导出</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:80px;">编号</th>
+                        <th>姓名</th>
+                        <th>部门</th>
+                        <th>性别</th>
+                        <th>学历</th>
+                        <th>手机</th>
+                        <th>入职日期</th>
+                        <th>状态</th>
+                        <th style="width:120px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="empTableBody"></tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <small class="text-muted" id="empTotal">共 0 条记录</small>
+            <nav id="empPagination"></nav>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑员工模态框 -->
+<div class="modal fade" id="empModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="empModalTitle"><i class="fas fa-user"></i> 员工信息</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="empForm">
+                    <input type="hidden" id="emp_edit_mode" value="0">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">员工编号 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" id="emp_id" name="emp_id" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">姓名 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" id="emp_name" name="name" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">性别</label>
+                            <select class="form-select form-select-sm" id="emp_gender" name="gender">
+                                <option value="">--</option><option value="男">男</option><option value="女">女</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">部门</label>
+                            <select class="form-select form-select-sm" id="emp_dept" name="dept_id"></select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">岗位</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_post" name="post_id">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">学历</label>
+                            <select class="form-select form-select-sm" id="emp_education" name="education">
+                                <option value="">--</option>
+                                <option>博士</option><option>硕士</option><option>本科</option>
+                                <option>大专</option><option>高中</option><option>其他</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">手机</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_mobile" name="mobile">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">邮箱</label>
+                            <input type="email" class="form-control form-control-sm" id="emp_email" name="email">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">身份证号</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_id_card" name="id_card">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">出生日期</label>
+                            <input type="date" class="form-control form-control-sm" id="emp_birth" name="birth_date">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">入职日期</label>
+                            <input type="date" class="form-control form-control-sm" id="emp_hire_date" name="hire_date">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">工作状态</label>
+                            <select class="form-select form-select-sm" id="emp_status" name="work_status">
+                                <option value="active">在职</option>
+                                <option value="resigned">离职</option>
+                                <option value="leave">休假</option>
+                                <option value="retired">退休</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">合同类型</label>
+                            <select class="form-select form-select-sm" id="emp_contract_type" name="contract_type">
+                                <option value="">--</option>
+                                <option>正式</option><option>试用</option><option>劳务</option><option>实习</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">合同到期日</label>
+                            <input type="date" class="form-control form-control-sm" id="emp_contract_end" name="contract_end_date">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">民族</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_nationality" name="nationality">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">毕业院校</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_school" name="graduate_school">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">专业</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_major" name="major">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">婚姻状况</label>
+                            <select class="form-select form-select-sm" id="emp_marital" name="marital_status">
+                                <option value="">--</option>
+                                <option>未婚</option><option>已婚</option><option>离异</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">紧急联系人</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_emergency_contact" name="emergency_contact">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">紧急联系人电话</label>
+                            <input type="text" class="form-control form-control-sm" id="emp_emergency_phone" name="emergency_phone">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">家庭地址</label>
+                        <input type="text" class="form-control form-control-sm" id="emp_address" name="home_address">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveEmployee()"><i class="fas fa-save"></i> 保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 查看详情模态框 -->
+<div class="modal fade" id="viewEmpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-id-card"></i> 员工档案详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="empDetailBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="editFromViewBtn"><i class="fas fa-edit"></i> 编辑</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 撤职/离职模态框 -->
+<div class="modal fade" id="dismissModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-user-minus"></i> 员工离职/辞退</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="dismissEmpId">
+                <div class="text-center mb-3">
+                    <i class="fas fa-exclamation-triangle text-danger" style="font-size:36px;"></i>
+                    <h5 class="mt-2">确认操作</h5>
+                    <p class="text-muted">将 <strong id="dismissEmpName"></strong> 设为：</p>
+                </div>
+                <div class="mb-3">
+                    <select class="form-select" id="dismissType">
+                        <option value="resign">主动离职</option>
+                        <option value="fire">辞退</option>
+                        <option value="retire">退休</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">离职日期</label>
+                    <input type="date" class="form-control" id="dismissDate">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">离职原因</label>
+                    <textarea class="form-control" id="dismissReason" rows="2" placeholder="请输入离职原因..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="dismissBtn" onclick="dismissEmployee()">
+                    <i class="fas fa-check"></i> 确认
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let empCurrentPage = 1;
+
+function loadDeptSelect() {
+    $.get('/api/departments/list', function(data) {
+        const selects = ['#emp_dept', '#filterDept'];
+        selects.forEach(sid => {
+            const sel = $(sid);
+            sel.empty();
+            if (sid === '#filterDept') sel.append('<option value="">全部部门</option>');
+            data.forEach(d => sel.append(`<option value="${d.dept_id}">${d.dept_name}</option>`));
+        });
+    });
+}
+
+function loadEmployees(page) {
+    page = page || empCurrentPage;
+    const search = $('#searchEmp').val();
+    const dept = $('#filterDept').val();
+    const status = $('#filterStatus').val();
+    $.get('/api/employees', {page, search, dept_id: dept, status}, function(res) {
+        empCurrentPage = res.page;
+        const tbody = $('#empTableBody');
+        tbody.empty();
+        if (!res.data.length) {
+            tbody.append(`<tr><td colspan="9"><div class="empty-state"><i class="fas fa-users"></i><p>暂无员工数据</p></div></td></tr>`);
+        } else {
+            res.data.forEach(e => {
+                const statusMap = {active:'在职', resigned:'离职', leave:'休假', retired:'退休'};
+                const badgeMap = {active:'success', resigned:'danger', leave:'warning', retired:'secondary'};
+                tbody.append(`<tr>
+                    <td><span class="badge bg-light text-dark">${e.emp_id}</span></td>
+                    <td><strong>${e.name}</strong></td>
+                    <td>${e.dept_name || '-'}</td>
+                    <td>${e.gender || '-'}</td>
+                    <td>${e.education || '-'}</td>
+                    <td>${e.mobile || '-'}</td>
+                    <td>${e.hire_date || '-'}</td>
+                    <td><span class="badge bg-${badgeMap[e.work_status]||'secondary'}">${statusMap[e.work_status]||e.work_status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info" onclick="viewEmployee('${e.emp_id}')" title="查看"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editEmployee('${e.emp_id}')" title="编辑"><i class="fas fa-edit"></i></button>
+                        ${e.work_status === 'resigned'
+                            ? `<button class="btn btn-sm btn-outline-success" onclick="rehireEmployee('${e.emp_id}','${e.name}')" title="返聘"><i class="fas fa-user-plus"></i></button>`
+                            : `<button class="btn btn-sm btn-outline-danger" onclick="showDismissModal('${e.emp_id}','${e.name}')" title="离职/辞退"><i class="fas fa-user-minus"></i></button>`
+                        }
+                    </td>
+                </tr>`);
+            });
+        }
+        $('#empTotal').text(`共 ${res.total} 条记录，第 ${res.page}/${res.total_pages} 页`);
+        $('#empPagination').empty().append(renderPagination(res.total_pages, res.page, loadEmployees));
+    });
+}
+
+function showAddEmployee() {
+    $('#empModalTitle').html('<i class="fas fa-user-plus"></i> 添加新员工');
+    $('#empForm')[0].reset();
+    $('#emp_edit_mode').val('0');
+    $('#emp_id').prop('disabled', false);
+    new bootstrap.Modal(document.getElementById('empModal')).show();
+}
+
+function editEmployee(empId) {
+    $.get(`/api/employees/${empId}`, function(e) {
+        $('#empModalTitle').html('<i class="fas fa-edit"></i> 编辑员工信息');
+        $('#emp_edit_mode').val('1');
+        $('#emp_id').val(e.emp_id).prop('disabled', true);
+        $('#emp_name').val(e.name);
+        $('#emp_gender').val(e.gender);
+        $('#emp_dept').val(e.dept_id);
+        $('#emp_post').val(e.post_id || '');
+        $('#emp_education').val(e.education);
+        $('#emp_mobile').val(e.mobile || '');
+        $('#emp_email').val(e.email || '');
+        $('#emp_id_card').val(e.id_card || '');
+        $('#emp_birth').val(e.birth_date || '');
+        $('#emp_hire_date').val(e.hire_date || '');
+        $('#emp_status').val(e.work_status || 'active');
+        $('#emp_contract_type').val(e.contract_type || '');
+        $('#emp_contract_end').val(e.contract_end_date || '');
+        $('#emp_nationality').val(e.nationality || '');
+        $('#emp_school').val(e.graduate_school || '');
+        $('#emp_major').val(e.major || '');
+        $('#emp_marital').val(e.marital_status || '');
+        $('#emp_emergency_contact').val(e.emergency_contact || '');
+        $('#emp_emergency_phone').val(e.emergency_phone || '');
+        $('#emp_address').val(e.home_address || '');
+        new bootstrap.Modal(document.getElementById('empModal')).show();
+    });
+}
+
+function viewEmployee(empId) {
+    $.get(`/api/employees/${empId}`, function(e) {
+        const sMap = {active:'在职', resigned:'离职', leave:'休假', retired:'退休'};
+        const cMap = {'':'无', hire:'入职', resign:'离职', transfer:'调岗', promotion:'晋升', leave:'请假'};
+        let html = `
+            <div class="row mb-3">
+                <div class="col-md-6"><strong>员工编号：</strong>${e.emp_id}</div>
+                <div class="col-md-6"><strong>姓名：</strong>${e.name}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>部门：</strong>${e.dept_name||'-'}</div>
+                <div class="col-md-4"><strong>岗位：</strong>${e.post_id||'-'}</div>
+                <div class="col-md-4"><strong>性别：</strong>${e.gender||'-'}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>学历：</strong>${e.education||'-'}</div>
+                <div class="col-md-4"><strong>出生日期：</strong>${e.birth_date||'-'}</div>
+                <div class="col-md-4"><strong>民族：</strong>${e.nationality||'-'}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>手机：</strong>${e.mobile||'-'}</div>
+                <div class="col-md-4"><strong>邮箱：</strong>${e.email||'-'}</div>
+                <div class="col-md-4"><strong>身份证：</strong>${e.id_card||'-'}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>婚姻状况：</strong>${e.marital_status||'-'}</div>
+                <div class="col-md-4"><strong>入职日期：</strong>${e.hire_date||'-'}</div>
+                <div class="col-md-4"><strong>工作状态：</strong>${sMap[e.work_status]||e.work_status}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>合同类型：</strong>${e.contract_type||'-'}</div>
+                <div class="col-md-4"><strong>合同到期：</strong>${e.contract_end_date||'-'}</div>
+                <div class="col-md-4"><strong>毕业院校：</strong>${e.graduate_school||'-'}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>专业：</strong>${e.major||'-'}</div>
+                <div class="col-md-8"><strong>家庭地址：</strong>${e.home_address||'-'}</div>
+            </div>
+            <div class="row">
+                <div class="col-md-6"><strong>紧急联系人：</strong>${e.emergency_contact||'-'}</div>
+                <div class="col-md-6"><strong>紧急电话：</strong>${e.emergency_phone||'-'}</div>
+            </div>`;
+        $('#empDetailBody').html(html);
+        $('#editFromViewBtn').off('click').on('click', function() {
+            bootstrap.Modal.getInstance(document.getElementById('viewEmpModal')).hide();
+            setTimeout(() => editEmployee(empId), 300);
+        });
+        new bootstrap.Modal(document.getElementById('viewEmpModal')).show();
+    });
+}
+
+function saveEmployee() {
+    const data = {};
+    $('#empForm :input').each(function() {
+        if (this.name) data[this.name] = $(this).val();
+    });
+    const isEdit = $('#emp_edit_mode').val() === '1';
+    const empId = data.emp_id;
+    
+    if (!data.emp_id || !data.name) {
+        showToast('员工编号和姓名为必填项', 'warning');
+        return;
+    }
+    
+    const url = isEdit ? `/api/employees/${empId}` : '/api/employees';
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    $.ajax({url, method, contentType:'application/json', data: JSON.stringify(data),
+        success: function(res) {
+            if (res.success) {
+                showToast(res.message);
+                bootstrap.Modal.getInstance(document.getElementById('empModal')).hide();
+                loadEmployees();
+            } else {
+                showToast(res.message, 'danger');
+            }
+        },
+        error: function() { showToast('操作失败', 'danger'); }
+    });
+}
+
+// 撤职/离职操作
+function showDismissModal(empId, name) {
+    $('#dismissEmpId').val(empId);
+    $('#dismissEmpName').text(name);
+    $('#dismissDate').val(new Date().toISOString().slice(0,10));
+    $('#dismissReason').val('');
+    $('#dismissType').val('resign');
+    new bootstrap.Modal(document.getElementById('dismissModal')).show();
+}
+
+function dismissEmployee() {
+    const empId = $('#dismissEmpId').val();
+    const name = $('#dismissEmpName').text();
+    const dismissDate = $('#dismissDate').val();
+    const dismissType = $('#dismissType').val();
+    const reason = $('#dismissReason').val();
+    
+    $('#dismissBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> 处理中...');
+    
+    $.ajax({
+        url: `/api/employees/${empId}/dismiss`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            dismiss_date: dismissDate,
+            dismiss_type: dismissType,
+            reason: reason
+        }),
+        success: function(res) {
+            if (res.success) {
+                showToast(`${name} 已${dismissType === 'resign' ? '离职' : '辞退'}`);
+                bootstrap.Modal.getInstance(document.getElementById('dismissModal')).hide();
+                loadEmployees();
+            } else {
+                showToast(res.message, 'danger');
+            }
+        },
+        error: function(xhr) {
+            const msg = xhr.responseJSON ? xhr.responseJSON.message : '操作失败，请重试';
+            showToast(msg, 'danger');
+            console.error('Dismiss error:', xhr);
+        },
+        complete: function() {
+            $('#dismissBtn').prop('disabled', false).html('<i class="fas fa-check"></i> 确认');
+        }
+    });
+}
+
+function rehireEmployee(empId, name) {
+    if (!confirm(`确认将 ${name}（${empId}）返聘为在职员工？`)) return;
+    $.ajax({
+        url: `/api/employees/${empId}/rehire`,
+        method: 'POST',
+        success: function(res) {
+            if (res.success) {
+                showToast(`${name} 已返聘成功`);
+                loadEmployees();
+            } else {
+                showToast(res.message, 'danger');
+            }
+        },
+        error: function(xhr) {
+            showToast('操作失败，请重试', 'danger');
+        }
+    });
+}
+
+// 键盘搜索
+$('#searchEmp').on('keyup', function(e) {
+    if (e.key === 'Enter') loadEmployees(1);
+});
+
+$(document).ready(function() {
+    loadDeptSelect();
+    loadEmployees(1);
+});
+</script>
+{% endblock %}
