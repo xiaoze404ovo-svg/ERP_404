@@ -1,3 +1,33 @@
-# ERP_404 - HRMS
+# ERP_404 - 人力资源管理系统
 
-v0.0.1 - Human Resource Management System
+基于企业 ERP 数据库开发的人力资源管理系统，专为企业人事部门设计。
+
+## 功能模块
+
+| 模块 | 说明 |
+|------|------|
+| 仪表盘 | Chart.js 可视化图表，员工分布、薪酬概览、考勤趋势 |
+| 员工档案 | 22字段完整档案，多条件搜索筛选，CRUD |
+| 部门架构 | 树形组织架构图，部门增删改 |
+| 考勤管理 | 打卡记录查询，月度考勤汇总 |
+| 薪酬管理 | 工资数据查询，多科目转置显示 |
+| 人事变动 | 入职/离职/调岗/晋升等变动跟踪 |
+| 报表导出 | CSV格式导出 |
+| 用户管理 | 管理员+人事专员双角色 |
+
+## 技术栈
+- 后端: Python Flask + SQLite
+- 前端: Bootstrap 5 + Chart.js + jQuery
+
+## 快速启动
+```bash
+cd hrms
+pip install flask flask-cors openpyxl
+py app.py
+```
+访问 http://127.0.0.1:5000
+管理员: admin / admin123
+人事专员: hruser / hr123
+
+## 版本
+v0.0.1 - 2026-05-11
