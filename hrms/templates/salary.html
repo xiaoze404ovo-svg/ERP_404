@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}薪酬管理 - HRMS{% endblock %}
+{% block content %}
+<div class="page-title">
+    <i class="fas fa-yen-sign me-2" style="color:#667eea;"></i>薪酬福利管理
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px;">员工薪资数据的查询与管理</small>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="input-group input-group-sm" style="width:200px;">
+                <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                <select class="form-select form-select-sm" id="salarySet"></select>
+            </div>
+            <div class="input-group input-group-sm" style="width:200px;">
+                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                <input type="text" class="form-control" id="salarySearch" placeholder="员工姓名...">
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadSalary()"><i class="fas fa-search"></i> 查询</button>
+        </div>
+        <div>
+            <a href="#" id="exportSalaryLink" class="btn btn-sm btn-outline-info"><i class="fas fa-download"></i> 导出</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0 table-sm" id="salaryTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>员工编号</th>
+                        <th>姓名</th>
+                        <th>部门</th>
+                        <th id="subjectsHeader"></th>
+                    </tr>
+                </thead>
+                <tbody id="salaryBody"></tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <small class="text-muted" id="salaryTotal">共 0 条记录</small>
+            <nav id="salaryPagination"></nav>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="m-0"><i class="fas fa-list me-2" style="color:#17a2b8;"></i>工资科目定义</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>科目编号</th><th>科目名称</th><th>计算方式</th><th>科目分组</th><th>类型</th></tr>
+                </thead>
+                <tbody id="subjectBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let salaryPage = 1;
+
+function loadSalarySets() {
+    $.get('/api/salary/sets', function(data) {
+        const sel = $('#salarySet');
+        sel.empty();
+        data.forEach(s => {
+            sel.append(`<option value="${s.set_id.trim()}">${s.title} (${s.set_id.trim()})</option>`);
+        });
+        if (data.length) {
+            sel.val(String(data[0].set_id));
+            $('#exportSalaryLink').attr('href', `/api/export/salary?set_id=${data[0].set_id}`);
+        }
+    });
+}
+
+function loadSubjects() {
+    $.get('/api/salary/subjects', function(data) {
+        const tbody = $('#subjectBody');
+        tbody.empty();
+        data.forEach(s => {
+            tbody.append(`<tr>
+                <td><span class="badge bg-light text-dark">${s.subject_id}</span></td>
+                <td>${s.subject_name}</td>
+                <td>-</td>
+                <td>${s.group_name||'-'}</td>
+                <td><span class="badge bg-info">工资项</span></td>
+            </tr>`);
+        });
+    });
+}
+
+function loadSalary(page) {
+    page = page || salaryPage;
+    const set_id = $('#salarySet').val();
+    const name = $('#salarySearch').val();
+    
+    if (set_id) $('#exportSalaryLink').attr('href', `/api/export/salary?set_id=${set_id}`);
+    
+    $.get('/api/salary', {page, set_id, emp_name: name}, function(res) {
+        salaryPage = res.page;
+        
+        // 动态生成表头
+        const headerRow = $('#salaryTable thead tr');
+        headerRow.find('th:gt(2)').remove();
+        if (res.subjects) {
+            res.subjects.forEach(s => {
+                headerRow.append(`<th>${s.subject_name}</th>`);
+            });
+        }
+        
+        const tbody = $('#salaryBody');
+        tbody.empty();
+        res.data.forEach(e => {
+            let row = `<tr>
+                <td><span class="badge bg-light text-dark">${e.emp_id}</span></td>
+                <td><strong>${e.name}</strong></td>
+                <td>${e.dept_name || '-'}</td>`;
+            if (res.subjects) {
+                res.subjects.forEach(s => {
+                    const val = e.subjects[s.subject_name];
+                    row += `<td class="text-end">${val != null ? '¥' + Number(val).toLocaleString() : '-'}</td>`;
+                });
+            }
+            row += '</tr>';
+            tbody.append(row);
+        });
+        if (!res.data.length) {
+            tbody.append(`<tr><td colspan="${3+(res.subjects?res.subjects.length:0)}"><div class="empty-state"><i class="fas fa-yen-sign"></i><p>暂无工资数据</p></div></td></tr>`);
+        }
+        $('#salaryTotal').text(`共 ${res.total} 条记录`);
+        $('#salaryPagination').empty().append(renderPagination(res.total_pages, res.page, loadSalary));
+    });
+}
+
+$('#salarySet').change(function() {
+    loadSalary(1);
+});
+
+$(document).ready(function() {
+    loadSalarySets();
+    loadSubjects();
+    setTimeout(() => loadSalary(1), 500);
+});
+</script>
+{% endblock %}
