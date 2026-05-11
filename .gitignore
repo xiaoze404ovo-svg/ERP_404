@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .env
 *.db
+.git-portable/
 node_modules/
 .idea/
 .vscode/
