@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}考勤管理 - HRMS{% endblock %}
+{% block content %}
+<div class="page-title">
+    <i class="fas fa-clock me-2" style="color:#667eea;"></i>考勤记录追踪
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px;">员工考勤汇总与打卡记录查询</small>
+</div>
+
+<ul class="nav nav-tabs mb-3" id="attendanceTabs">
+    <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#summaryTab">考勤汇总</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#rawTab">原始打卡记录</a>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- 考勤汇总 -->
+    <div class="tab-pane fade show active" id="summaryTab">
+        <div class="card">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <div class="input-group input-group-sm" style="width:160px;">
+                        <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                        <input type="month" class="form-control" id="summaryMonth">
+                    </div>
+                    <div class="input-group input-group-sm" style="width:200px;">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control" id="summarySearch" placeholder="员工姓名...">
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadSummary()"><i class="fas fa-search"></i> 查询</button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="summarizeAttendance()"><i class="fas fa-sync"></i> 重新汇总</button>
+                </div>
+                <div>
+                    <a href="#" id="exportSummaryLink" class="btn btn-sm btn-outline-info"><i class="fas fa-download"></i> 导出</a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>编号</th><th>姓名</th><th>部门</th>
+                                <th>月份</th><th>应出勤</th><th>实际出勤</th>
+                                <th>迟到</th><th>早退</th><th>旷工</th><th>请假(天)</th><th>加班(时)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attSummaryBody"></tbody>
+                    </table>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <small class="text-muted" id="summaryTotal">共 0 条记录</small>
+                    <nav id="summaryPagination"></nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 原始打卡记录 -->
+    <div class="tab-pane fade" id="rawTab">
+        <div class="card">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <div class="input-group input-group-sm" style="width:160px;">
+                        <span class="input-group-text">从</span>
+                        <input type="date" class="form-control" id="rawDateFrom">
+                    </div>
+                    <div class="input-group input-group-sm" style="width:160px;">
+                        <span class="input-group-text">到</span>
+                        <input type="date" class="form-control" id="rawDateTo">
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadRawRecords()"><i class="fas fa-search"></i> 查询</button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>卡号</th><th>姓名</th><th>部门</th><th>日期</th><th>时间</th><th>类型</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rawRecordBody"></tbody>
+                    </table>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <small class="text-muted" id="rawTotal">共 0 条记录</small>
+                    <nav id="rawPagination"></nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let summaryPage = 1, rawPage = 1;
+
+function loadSummary(page) {
+    page = page || summaryPage;
+    const ym = $('#summaryMonth').val().replace('-', '');
+    const name = $('#summarySearch').val();
+    
+    $('#exportSummaryLink').attr('href', `/api/export/attendance?year_month=${ym}`);
+    
+    $.get('/api/attendance', {page, year_month: ym, emp_name: name}, function(res) {
+        summaryPage = res.page;
+        const tbody = $('#attSummaryBody');
+        tbody.empty();
+        res.data.forEach(s => {
+            tbody.append(`<tr>
+                <td><span class="badge bg-light text-dark">${s.emp_id}</span></td>
+                <td>${s.name}</td>
+                <td>${s.dept_name || '-'}</td>
+                <td>${s.year_month}</td>
+                <td>${s.work_days}</td>
+                <td><strong>${s.actual_work_days}</strong></td>
+                <td><span class="badge bg-${s.late_times>0?'warning':'secondary'}">${s.late_times}</span></td>
+                <td>${s.early_leave_times||0}</td>
+                <td><span class="badge bg-${s.absent_days>0?'danger':'secondary'}">${s.absent_days||0}</span></td>
+                <td>${s.leave_days||0}</td>
+                <td>${s.overtime_hours||0}</td>
+            </tr>`);
+        });
+        if (!res.data.length) {
+            tbody.append(`<tr><td colspan="11"><div class="empty-state"><i class="fas fa-clock"></i><p>暂无考勤数据</p></div></td></tr>`);
+        }
+        $('#summaryTotal').text(`共 ${res.total} 条记录`);
+        $('#summaryPagination').empty().append(renderPagination(res.total_pages, res.page, loadSummary));
+    });
+}
+
+function loadRawRecords(page) {
+    page = page || rawPage;
+    const from = $('#rawDateFrom').val();
+    const to = $('#rawDateTo').val();
+    $.get('/api/attendance/raw', {page, date_from: from, date_to: to}, function(res) {
+        rawPage = res.page;
+        const tbody = $('#rawRecordBody');
+        tbody.empty();
+        res.data.forEach(r => {
+            const ioMap = {'0':'上班','1':'下班','':'未知'};
+            tbody.append(`<tr>
+                <td>${r.card_no}</td>
+                <td>${r.name || '-'}</td>
+                <td>${r.dept_name || '-'}</td>
+                <td>${r.mark_date}</td>
+                <td>${r.mark_time ? r.mark_time.trim() : '-'}</td>
+                <td><span class="badge bg-info">${ioMap[r.rec_io_flag]||'未知'}</span></td>
+            </tr>`);
+        });
+        if (!res.data.length) {
+            tbody.append(`<tr><td colspan="6"><div class="empty-state"><i class="fas fa-clock"></i><p>暂无打卡记录</p></div></td></tr>`);
+        }
+        $('#rawTotal').text(`共 ${res.total} 条记录`);
+        $('#rawPagination').empty().append(renderPagination(res.total_pages, res.page, loadRawRecords));
+    });
+}
+
+function summarizeAttendance() {
+    const ym = $('#summaryMonth').val().replace('-', '');
+    if (!confirm(`确认重新汇总 ${ym} 月的考勤数据？`)) return;
+    $.post('/api/attendance/summarize', JSON.stringify({year_month: ym}),
+        function(res) {
+            showToast(res.message);
+            loadSummary();
+        }, 'json'
+    );
+}
+
+$(document).ready(function() {
+    const now = new Date();
+    $('#summaryMonth').val(now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0'));
+    // 默认显示最近7天的原始记录
+    const to = new Date();
+    const from = new Date(to.getTime() - 7*86400000);
+    $('#rawDateTo').val(to.toISOString().slice(0,10));
+    $('#rawDateFrom').val(from.toISOString().slice(0,10));
+    loadSummary(1);
+});
+</script>
+{% endblock %}
