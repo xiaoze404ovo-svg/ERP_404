@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}用户管理 - HRMS{% endblock %}
+{% block content %}
+<div class="page-title">
+    <i class="fas fa-user-shield me-2" style="color:#667eea;"></i>系统用户管理
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px;">管理员 - 管理登录用户与权限</small>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="m-0"><i class="fas fa-users me-2"></i>用户列表</h6>
+        <button class="btn btn-sm btn-success" onclick="showAddUser()"><i class="fas fa-plus"></i> 添加用户</button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>用户名</th><th>姓名</th><th>角色</th><th>状态</th><th>最后登录</th><th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 添加用户 -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> 添加系统用户</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="newUsername">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">密码 <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control" id="newPassword">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">姓名</label>
+                    <input type="text" class="form-control" id="newFullName">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">角色 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="newRole">
+                        <option value="hr_specialist">人事专员</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()"><i class="fas fa-save"></i> 保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function loadUsers() {
+    $.get('/api/users', function(data) {
+        const tbody = $('#userTableBody');
+        tbody.empty();
+        data.forEach(u => {
+            const roleBadge = u.role === 'admin' ? 'bg-primary' : 'bg-success';
+            const roleName = u.role === 'admin' ? '管理员' : '人事专员';
+            tbody.append(`<tr>
+                <td><strong>${u.username}</strong></td>
+                <td>${u.full_name || '-'}</td>
+                <td><span class="badge ${roleBadge}">${roleName}</span></td>
+                <td><span class="badge bg-${u.is_active?'success':'secondary'}">${u.is_active?'启用':'停用'}</span></td>
+                <td><small class="text-muted">${u.last_login || '从未登录'}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${u.user_id}','${u.username}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`);
+        });
+    });
+}
+
+function showAddUser() {
+    $('#newUsername').val('');
+    $('#newPassword').val('');
+    $('#newFullName').val('');
+    new bootstrap.Modal(document.getElementById('userModal')).show();
+}
+
+function saveUser() {
+    const data = {
+        username: $('#newUsername').val(),
+        password: $('#newPassword').val(),
+        full_name: $('#newFullName').val(),
+        role: $('#newRole').val()
+    };
+    if (!data.username || !data.password) {
+        showToast('用户名和密码为必填项', 'warning');
+        return;
+    }
+    $.ajax({url: '/api/users', method: 'POST', contentType:'application/json', data: JSON.stringify(data),
+        success: function(res) {
+            if (res.success) {
+                showToast(res.message);
+                bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+                loadUsers();
+            } else {
+                showToast(res.message, 'danger');
+            }
+        }
+    });
+}
+
+function deleteUser(userId, username) {
+    if (!confirm(`确认删除用户 "${username}"？`)) return;
+    $.ajax({url: `/api/users/${userId}`, method: 'DELETE',
+        success: function(res) {
+            if (res.success) showToast(res.message);
+            else showToast(res.message, 'danger');
+            loadUsers();
+        }
+    });
+}
+
+$(document).ready(loadUsers);
+</script>
+{% endblock %}
