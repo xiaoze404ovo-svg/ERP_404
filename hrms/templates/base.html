@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HRMS - 人力资源管理系统{% endblock %}</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --topbar-height: 57px;
+        }
+        body {
+            font-size: 14px;
+            background: #f4f6f9;
+            overflow-x: hidden;
+        }
+        .main-sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #1a2035 0%, #2d3748 100%);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1038;
+            transition: transform 0.3s;
+        }
+        .main-sidebar .brand-link {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            color: #fff;
+            text-decoration: none;
+        }
+        .main-sidebar .brand-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; color: #fff; margin-right: 10px;
+        }
+        .main-sidebar .nav-item { margin: 2px 8px; }
+        .main-sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            padding: 10px 15px;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .main-sidebar .nav-link:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+        .main-sidebar .nav-link.active {
+            color: #fff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .main-sidebar .nav-link i {
+            width: 22px;
+            text-align: center;
+            margin-right: 8px;
+        }
+        .content-wrapper {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            padding-top: 0;
+            transition: margin-left 0.3s;
+        }
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            padding: 0 20px;
+            height: var(--topbar-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1037;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .topbar .sidebar-toggle {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 8px;
+        }
+        .topbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .topbar .user-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 14px;
+        }
+        .content {
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .stat-card {
+            border-radius: 12px;
+            padding: 20px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card .icon {
+            position: absolute;
+            right: 15px;
+            bottom: 15px;
+            font-size: 48px;
+            opacity: 0.2;
+        }
+        .stat-card .number {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .stat-card .label {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-top: 5px;
+        }
+        .bg-gradient-blue { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .bg-gradient-green { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .bg-gradient-orange { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .bg-gradient-teal { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .badge-role-admin { background: #667eea; color: #fff; }
+        .badge-role-hr { background: #38ef7d; color: #1a2035; }
+        .page-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+        .table th { font-weight: 600; color: #495057; border-top: none; }
+        .table td { vertical-align: middle; }
+        .modal-header { background: #f8f9fa; border-radius: 10px 10px 0 0; }
+        .btn-toolbar .btn { margin-right: 5px; }
+        .search-box { max-width: 300px; }
+        @media (max-width: 768px) {
+            .main-sidebar { transform: translateX(-100%); }
+            .main-sidebar.show { transform: translateX(0); }
+            .content-wrapper { margin-left: 0; }
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1037;
+        }
+        .sidebar-overlay.show { display: block; }
+        .pagination { margin-bottom: 0; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #adb5bd; }
+        .empty-state i { font-size: 48px; margin-bottom: 15px; }
+        .toast-container { position: fixed; top: 70px; right: 20px; z-index: 9999; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="hold-transition">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- 侧边栏 -->
+<aside class="main-sidebar" id="mainSidebar">
+    <a href="{{ url_for('dashboard') }}" class="brand-link">
+        <div class="brand-icon"><i class="fas fa-users-cog"></i></div>
+        <span style="font-weight:600;font-size:16px;">HRMS</span>
+        <small style="margin-left:auto;opacity:0.6;font-size:11px;">v1.0</small>
+    </a>
+    <nav class="mt-2" style="padding:0 8px;">
+        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+            <li class="nav-item">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}">
+                    <i class="fas fa-tachometer-alt"></i><span>仪表盘</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('employees') }}" class="nav-link {{ 'active' if request.endpoint == 'employees' }}">
+                    <i class="fas fa-user-friends"></i><span>员工管理</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('departments_page') }}" class="nav-link {{ 'active' if request.endpoint == 'departments_page' }}">
+                    <i class="fas fa-sitemap"></i><span>部门管理</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('attendance_page') }}" class="nav-link {{ 'active' if request.endpoint == 'attendance_page' }}">
+                    <i class="fas fa-clock"></i><span>考勤管理</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('salary_page') }}" class="nav-link {{ 'active' if request.endpoint == 'salary_page' }}">
+                    <i class="fas fa-yen-sign"></i><span>薪酬管理</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('changes_page') }}" class="nav-link {{ 'active' if request.endpoint == 'changes_page' }}">
+                    <i class="fas fa-exchange-alt"></i><span>人事变动</span>
+                </a>
+            </li>
+            {% if role == 'admin' %}
+            <li class="nav-header" style="color:rgba(255,255,255,0.4);font-size:11px;padding:10px 15px 5px;text-transform:uppercase;">系统管理</li>
+            <li class="nav-item">
+                <a href="{{ url_for('users_page') }}" class="nav-link {{ 'active' if request.endpoint == 'users_page' }}">
+                    <i class="fas fa-user-shield"></i><span>用户管理</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</aside>
+
+<!-- 主内容 -->
+<div class="content-wrapper">
+    <div class="topbar">
+        <div>
+            <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <button class="sidebar-toggle d-none d-md-inline" onclick="toggleSidebarDesktop()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <div class="user-info">
+            <span style="color:#6c757d;font-size:13px;">
+                <i class="far fa-calendar-alt"></i> <span id="currentTime"></span>
+            </span>
+            <div class="dropdown">
+                <button class="btn btn-link text-dark dropdown-toggle" data-bs-toggle="dropdown" style="text-decoration:none;padding:0;">
+                    <div class="user-avatar" style="display:inline-flex;margin-right:8px;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span>{{ user_name }}</span>
+                    <span class="badge {{ 'badge-role-admin' if role=='admin' else 'badge-role-hr' }}" style="margin-left:5px;font-size:10px;">
+                        {{ '管理员' if role=='admin' else '人事专员' }}
+                    </span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end">
+                    <h6 class="dropdown-header">{{ user_name }}</h6>
+                    <button class="dropdown-item" onclick="showChangePassword()">
+                        <i class="fas fa-key"></i> 修改密码
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                        <i class="fas fa-sign-out-alt"></i> 退出登录
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<!-- Toast容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- 修改密码模态框 -->
+<div class="modal fade" id="changePwdModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-key"></i> 修改密码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">原密码</label>
+                    <input type="password" class="form-control" id="oldPassword">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">新密码</label>
+                    <input type="password" class="form-control" id="newPassword">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">确认新密码</label>
+                    <input type="password" class="form-control" id="confirmPassword">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="doChangePassword()">确认修改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// 时钟
+function updateClock() {
+    const now = new Date();
+    const str = now.getFullYear() + '-' +
+        String(now.getMonth()+1).padStart(2,'0') + '-' +
+        String(now.getDate()).padStart(2,'0') + ' ' +
+        String(now.getHours()).padStart(2,'0') + ':' +
+        String(now.getMinutes()).padStart(2,'0') + ':' +
+        String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('currentTime').textContent = str;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// 侧边栏
+function toggleSidebar() {
+    document.getElementById('mainSidebar').classList.toggle('show');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function toggleSidebarDesktop() {
+    const sidebar = document.getElementById('mainSidebar');
+    const wrapper = document.querySelector('.content-wrapper');
+    if (sidebar.style.transform === 'translateX(-250px)') {
+        sidebar.style.transform = 'translateX(0)';
+        wrapper.style.marginLeft = '250px';
+    } else {
+        sidebar.style.transform = 'translateX(-250px)';
+        wrapper.style.marginLeft = '0';
+    }
+}
+
+// Toast提示
+function showToast(message, type='success') {
+    const container = document.getElementById('toastContainer');
+    const colors = {success:'#28a745', danger:'#dc3545', warning:'#ffc107', info:'#17a2b8'};
+    const icons = {success:'fa-check-circle', danger:'fa-times-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle'};
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white show';
+    toast.style.cssText = `background:${colors[type] || '#28a745'};border:none;min-width:280px;`;
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas ${icons[type] || 'fa-check-circle'}"></i> ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 4000);
+}
+
+// 修改密码
+function showChangePassword() {
+    document.getElementById('oldPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+    new bootstrap.Modal(document.getElementById('changePwdModal')).show();
+}
+function doChangePassword() {
+    const old = document.getElementById('oldPassword').value;
+    const np = document.getElementById('newPassword').value;
+    const cp = document.getElementById('confirmPassword').value;
+    if (!old || !np) { showToast('请填写完整', 'warning'); return; }
+    if (np !== cp) { showToast('两次密码不一致', 'danger'); return; }
+    if (np.length < 4) { showToast('密码至少4位', 'warning'); return; }
+    $.post('/change_password', {old_password: old, new_password: np}, function(res) {
+        if (res.success) {
+            showToast('密码修改成功');
+            bootstrap.Modal.getInstance(document.getElementById('changePwdModal')).hide();
+        } else {
+            showToast(res.message, 'danger');
+        }
+    });
+}
+
+// 通用分页组件
+function renderPagination(totalPages, currentPage, callback) {
+    let html = '';
+    const maxShow = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxShow/2));
+    let end = Math.min(totalPages, start + maxShow - 1);
+    if (end - start < maxShow - 1) start = Math.max(1, end - maxShow + 1);
+    
+    html += `<li class="page-item ${currentPage<=1?'disabled':''}">
+        <a class="page-link" href="#" data-page="${currentPage-1}"><i class="fas fa-chevron-left"></i></a></li>`;
+    for (let i = start; i <= end; i++) {
+        html += `<li class="page-item ${i===currentPage?'active':''}">
+            <a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    }
+    html += `<li class="page-item ${currentPage>=totalPages?'disabled':''}">
+        <a class="page-link" href="#" data-page="${currentPage+1}"><i class="fas fa-chevron-right"></i></a></li>`;
+    html += `<li class="page-item disabled"><a class="page-link">共 ${totalPages} 页</a></li>`;
+    
+    const ul = document.createElement('ul');
+    ul.className = 'pagination pagination-sm m-0';
+    ul.innerHTML = html;
+    ul.querySelectorAll('a.page-link[data-page]').forEach(a => {
+        a.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = parseInt(this.dataset.page);
+            if (page >= 1 && page <= totalPages) callback(page);
+        });
+    });
+    return ul;
+}
+
+// 通用表单序列化
+function serializeForm(formId) {
+    const data = {};
+    $(`#${formId} :input`).each(function() {
+        if (this.name && !this.disabled) {
+            data[this.name] = $(this).val();
+        }
+    });
+    return data;
+}
+
+$(document).ready(function() {
+    // 所有带data-toggle="tooltip"的
+    $('[data-toggle="tooltip"]').tooltip();
+});
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>
