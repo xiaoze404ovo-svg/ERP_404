@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}人事变动 - HRMS{% endblock %}
+{% block content %}
+<div class="page-title">
+    <i class="fas fa-exchange-alt me-2" style="color:#667eea;"></i>人事变动记录
+    <small class="text-muted" style="font-size:13px;font-weight:400;margin-left:10px;">员工入职、离职、调岗等变动记录</small>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <select class="form-select form-select-sm" id="filterChangeType" style="width:130px;">
+                <option value="">全部类型</option>
+                <option value="hire">入职</option>
+                <option value="resign">离职</option>
+                <option value="transfer">调岗</option>
+                <option value="promotion">晋升</option>
+                <option value="demotion">降职</option>
+                <option value="contract_renew">续约</option>
+            </select>
+            <div class="input-group input-group-sm" style="width:150px;">
+                <span class="input-group-text">从</span>
+                <input type="date" class="form-control" id="filterDateFrom">
+            </div>
+            <div class="input-group input-group-sm" style="width:150px;">
+                <span class="input-group-text">到</span>
+                <input type="date" class="form-control" id="filterDateTo">
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadChanges()"><i class="fas fa-search"></i> 查询</button>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-success" onclick="showAddChange()"><i class="fas fa-plus"></i> 新增记录</button>
+            <a href="{{ url_for('export_changes') }}" class="btn btn-sm btn-outline-info"><i class="fas fa-download"></i> 导出</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>编号</th><th>员工</th><th>部门</th><th>变动类型</th>
+                        <th>变动日期</th><th>原部门</th><th>新部门</th><th>变动原因</th><th>备注</th><th>记录时间</th>
+                    </tr>
+                </thead>
+                <tbody id="changesBody"></tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <small class="text-muted" id="changesTotal">共 0 条记录</small>
+            <nav id="changesPagination"></nav>
+        </div>
+    </div>
+</div>
+
+<!-- 新增变动记录模态框 -->
+<div class="modal fade" id="changeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exchange-alt"></i> 新增人事变动记录</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="changeForm">
+                    <div class="mb-3">
+                        <label class="form-label">员工 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <select class="form-select" id="changeEmp" required></select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">变动类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="changeType" required>
+                            <option value="hire">入职</option>
+                            <option value="resign">离职</option>
+                            <option value="transfer">调岗</option>
+                            <option value="promotion">晋升</option>
+                            <option value="demotion">降职</option>
+                            <option value="contract_renew">续约</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">变动日期 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="changeDate" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">原部门</label>
+                            <input type="text" class="form-control" id="changeOldDept" placeholder="留空自动使用当前部门">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">新部门</label>
+                            <input type="text" class="form-control" id="changeNewDept">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">原薪资</label>
+                            <input type="number" class="form-control" id="changeOldSalary" step="0.01">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">新薪资</label>
+                            <input type="number" class="form-control" id="changeNewSalary" step="0.01">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">变动原因</label>
+                        <textarea class="form-control" id="changeReason" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="changeRemark" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveChange()"><i class="fas fa-save"></i> 保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let changesPage = 1;
+
+function loadChanges(page) {
+    page = page || changesPage;
+    const change_type = $('#filterChangeType').val();
+    const date_from = $('#filterDateFrom').val();
+    const date_to = $('#filterDateTo').val();
+    
+    $.get('/api/changes', {page, change_type, date_from, date_to}, function(res) {
+        changesPage = res.page;
+        const typeBadges = {
+            hire:'success', resign:'danger', transfer:'info',
+            promotion:'primary', demotion:'warning', leave:'secondary',
+            contract_renew:'dark', '': 'secondary'
+        };
+        const tbody = $('#changesBody');
+        tbody.empty();
+        res.data.forEach(c => {
+            tbody.append(`<tr>
+                <td><span class="badge bg-light text-dark">${c.change_id}</span></td>
+                <td><strong>${c.name}</strong></td>
+                <td>${c.dept_name || '-'}</td>
+                <td><span class="badge bg-${typeBadges[c.change_type]||'secondary'}">${c.change_type_name}</span></td>
+                <td>${c.change_date}</td>
+                <td>${c.old_dept_name || '-'}</td>
+                <td>${c.new_dept_name || '-'}</td>
+                <td>${c.reason || '-'}</td>
+                <td>${c.remark || '-'}</td>
+                <td><small class="text-muted">${c.created_at || ''}</small></td>
+            </tr>`);
+        });
+        if (!res.data.length) {
+            tbody.append(`<tr><td colspan="10"><div class="empty-state"><i class="fas fa-exchange-alt"></i><p>暂无变动记录</p></div></td></tr>`);
+        }
+        $('#changesTotal').text(`共 ${res.total} 条记录`);
+        $('#changesPagination').empty().append(renderPagination(res.total_pages, res.page, loadChanges));
+    });
+}
+
+function showAddChange() {
+    $('#changeForm')[0].reset();
+    const now = new Date().toISOString().slice(0,10);
+    $('#changeDate').val(now);
+    
+    // 加载员工列表
+    const sel = $('#changeEmp');
+    sel.empty();
+    $.get('/api/employees', {page:1, per_page:999}, function(res) {
+        if (res.data) {
+            res.data.forEach(e => {
+                sel.append(`<option value="${e.emp_id}">${e.name} (${e.emp_id})</option>`);
+            });
+        }
+    });
+    
+    new bootstrap.Modal(document.getElementById('changeModal')).show();
+}
+
+function saveChange() {
+    const data = {
+        emp_id: $('#changeEmp').val(),
+        change_type: $('#changeType').val(),
+        change_date: $('#changeDate').val(),
+        old_dept_id: $('#changeOldDept').val(),
+        new_dept_id: $('#changeNewDept').val(),
+        old_salary: $('#changeOldSalary').val() || null,
+        new_salary: $('#changeNewSalary').val() || null,
+        reason: $('#changeReason').val(),
+        remark: $('#changeRemark').val()
+    };
+    
+    if (!data.emp_id || !data.change_type || !data.change_date) {
+        showToast('请填写完整信息', 'warning');
+        return;
+    }
+    
+    $.ajax({url: '/api/changes', method: 'POST', contentType:'application/json', data: JSON.stringify(data),
+        success: function(res) {
+            if (res.success) {
+                showToast(res.message);
+                bootstrap.Modal.getInstance(document.getElementById('changeModal')).hide();
+                loadChanges();
+            } else {
+                showToast(res.message, 'danger');
+            }
+        }
+    });
+}
+
+$(document).ready(function() {
+    loadChanges(1);
+});
+</script>
+{% endblock %}
